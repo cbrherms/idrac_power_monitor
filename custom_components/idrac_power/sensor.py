@@ -70,9 +70,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             await asyncio.sleep(rest_client.interval)
 
     async def update_all():
-        await hass.async_add_executor_job(rest_client.update_thermals)
-        await hass.async_add_executor_job(rest_client.update_status)
-        await hass.async_add_executor_job(rest_client.update_power_usage)
+        try:
+            await hass.async_add_executor_job(rest_client.update_thermals)
+            await hass.async_add_executor_job(rest_client.update_status)
+            await hass.async_add_executor_job(rest_client.update_power_usage)
+        except Exception as e:
+            _LOGGER.error(f"Error updating sensors: {e}")
 
     await update_all()
 
