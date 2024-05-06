@@ -121,7 +121,7 @@ class IdracRest:
             handle_error(result)
             status_values = result.json()
             try:
-                new_status = status_values[JSON_STATUS][JSON_STATUS_STATE] == 'Enabled'
+                new_status = status_values['PowerState'] == 'On'
             except:
                 new_status = False
 
