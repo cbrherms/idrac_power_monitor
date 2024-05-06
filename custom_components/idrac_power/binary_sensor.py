@@ -67,6 +67,8 @@ class IdracStatusBinarySensor(BinarySensorEntity):
         self._attr_unique_id = unique_id
         self._attr_has_entity_name = True
 
+        self._attr_available = True
+
         self.rest.register_callback_status(self.update_value)
 
     @property
@@ -75,5 +77,9 @@ class IdracStatusBinarySensor(BinarySensorEntity):
         return "Server Status"
 
     def update_value(self, status: bool):
-        self._attr_is_on = status
+        if status is not None:
+            self._attr_is_on = status
+            self._attr_available = True
+        else:
+            self._attr_available = False
         self.schedule_update_ha_state()

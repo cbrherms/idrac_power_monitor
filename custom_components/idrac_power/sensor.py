@@ -101,10 +101,16 @@ class IdracCurrentPowerSensor(SensorEntity):
 
         self._attr_native_value = None
 
+        self._attr_available = True
+
         self.rest.register_callback_power_usage(self.update_value)
 
     def update_value(self, new_value: int):
-        self._attr_native_value = new_value
+        if new_value is not None:
+            self._attr_native_value = new_value
+            self._attr_available = True
+        else:
+            self._attr_available = False
         self.schedule_update_ha_state()
 
 
@@ -128,10 +134,16 @@ class IdracFanSensor(SensorEntity):
         self._attr_native_value = None
         self.index = index
 
+        self._attr_available = True
+
         self.rest.register_callback_thermals(self.update_value)
 
     def update_value(self, thermal: dict):
-        self._attr_native_value = thermal['Fans'][self.index]['Reading']
+        if thermal is not None:
+            self._attr_native_value = thermal['Fans'][self.index]['Reading']
+            self._attr_available = True
+        else:
+            self._attr_available = False
         self.schedule_update_ha_state()
 
 
@@ -155,8 +167,14 @@ class IdracTempSensor(SensorEntity):
         self._attr_native_value = None
         self.index = index
 
+        self._attr_available = True
+
         self.rest.register_callback_thermals(self.update_value)
 
     def update_value(self, thermal: dict):
-        self._attr_native_value = thermal['Temperatures'][self.index]['ReadingCelsius']
+        if thermal is not None:
+            self._attr_native_value = thermal['Temperatures'][self.index]['ReadingCelsius']
+            self._attr_available = True
+        else:
+            self._attr_available = False
         self.schedule_update_ha_state()

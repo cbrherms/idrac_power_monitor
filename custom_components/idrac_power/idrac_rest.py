@@ -70,7 +70,10 @@ class IdracRest:
         return manager_results[JSON_FIRMWARE_VERSION]
 
     def get_path(self, path):
-        return requests.get(protocol + self.host + path, auth=self.auth, verify=False)
+        try:
+            return requests.get(protocol + self.host + path, auth=self.auth, verify=False)
+        except requests.exceptions.RequestException:
+            raise CannotConnect("Failed to establish a new connection")
 
     def power_on(self):
         result = requests.post(protocol + self.host + drac_powerON_path, auth=self.auth, verify=False,
@@ -99,43 +102,56 @@ class IdracRest:
         self.callback_power_usage.append(callback)
 
     def update_thermals(self) -> dict:
-        req = self.get_path(drac_thermals)
-        handle_error(req)
-        new_thermals = req.json()
+        try:
+            req = self.get_path(drac_thermals)
+            handle_error(req)
+            new_thermals = req.json()
 
-        if new_thermals != self.thermal_values:
-            self.thermal_values = new_thermals
-            for callback in self.callback_thermals:
-                callback(self.thermal_values)
-        return self.thermal_values
+            if new_thermals != self.thermal_values:
+                self.thermal_values = new_thermals
+                for callback in self.callback_thermals:
+                    callback(self.thermal_values)
+            return self.thermal_values
+        except CannotConnect:
+            self.mark_sensors_unavailable()
 
     def update_status(self):
-        result = self.get_path(drac_chassis_path)
-        handle_error(result)
-        status_values = result.json()
         try:
-            new_status = status_values[JSON_STATUS][JSON_STATUS_STATE] == 'Enabled'
-        except:
-            new_status = False
+            result = self.get_path(drac_chassis_path)
+            handle_error(result)
+            status_values = result.json()
+            try:
+                new_status = status_values[JSON_STATUS][JSON_STATUS_STATE] == 'Enabled'
+            except:
+                new_status = False
 
-        if new_status != self.status:
-            self.status = new_status
-            for callback in self.callback_status:
-                callback(self.status)
+            if new_status != self.status:
+                self.status = new_status
+                for callback in self.callback_status:
+                    callback(self.status)
+        except CannotConnect:
+            self.mark_sensors_unavailable()
 
     def update_power_usage(self):
-        result = self.get_path(drac_powercontrol_path)
-        handle_error(result)
-        power_values = result.json()
         try:
-            new_power_usage = power_values[JSON_POWER_CONSUMED_WATTS]
-            if new_power_usage != self.power_usage:
-                self.power_usage = new_power_usage
+            result = self.get_path(drac_powercontrol_path)
+            handle_error(result)
+            power_usage = result.json()[JSON_POWER_CONSUMED_WATTS]
+    
+            if power_usage != self.power_usage:
+                self.power_usage = power_usage
                 for callback in self.callback_power_usage:
                     callback(self.power_usage)
-        except:
-            pass
+        except CannotConnect:
+            self.mark_sensors_unavailable()
 
+    def mark_sensors_unavailable(self):
+        for callback in self.callback_thermals:
+            callback(None)
+        for callback in self.callback_status:
+            callback(None)
+        for callback in self.callback_power_usage:
+            callback(None)
 
 class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
