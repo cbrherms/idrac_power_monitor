@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant as hass
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
-    DOMAIN, JSON_MODEL, CONF_INTERVAL, CONF_INTERVAL_DEFAULT,
+    DOMAIN, JSON_MODEL, JSON_SERIAL_NUMBER, CONF_INTERVAL, CONF_INTERVAL_DEFAULT,
 )
 from .idrac_rest import IdracRest, CannotConnect, InvalidAuth, RedfishConfig, IdracMock
 
@@ -58,6 +58,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors["base"] = "unknown"
 
         else:
+            await self.async_set_unique_id(info["serial_number"])
+            self._abort_if_unique_id_configured()
             return self.async_create_entry(title=info["model_name"], data=user_input)
 
         return self.async_show_form(
@@ -82,5 +84,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         device_info = await hass.async_add_executor_job(self.hass, target=rest_client.get_device_info)
         model_name = device_info[JSON_MODEL]
+        serial_number = device_info[JSON_SERIAL_NUMBER]
 
-        return dict(model_name=model_name)
+        return dict(model_name=model_name, serial_number=serial_number)
