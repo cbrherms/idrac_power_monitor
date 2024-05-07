@@ -73,6 +73,7 @@ class IdracRest:
         try:
             return requests.get(protocol + self.host + path, auth=self.auth, verify=False)
         except requests.exceptions.RequestException:
+            _LOGGER.debug("CannotConnect exception raised in get_path")
             raise CannotConnect("Failed to establish a new connection")
 
     def power_on(self):
@@ -114,6 +115,9 @@ class IdracRest:
             return self.thermal_values
         except CannotConnect:
             self.mark_sensors_unavailable()
+        except Exception as e:
+            _LOGGER.error(f"Unhandled exception: {e}")
+            self.mark_sensors_unavailable()
 
     def update_status(self):
         try:
@@ -125,11 +129,17 @@ class IdracRest:
             except:
                 new_status = False
 
-            if new_status != self.status:
-                self.status = new_status
-                for callback in self.callback_status:
+            self.status = new_status
+            for callback in self.callback_status:
+                try:
                     callback(self.status)
+                except Exception as e:
+                    _LOGGER.error(f"An error occurred during status callback: {e}")
+
         except CannotConnect:
+            self.mark_sensors_unavailable()
+        except Exception as e:
+            _LOGGER.error(f"Unhandled exception: {e}")
             self.mark_sensors_unavailable()
 
     def update_power_usage(self):
@@ -144,8 +154,12 @@ class IdracRest:
                     callback(self.power_usage)
         except CannotConnect:
             self.mark_sensors_unavailable()
+        except Exception as e:
+            _LOGGER.error(f"Unhandled exception: {e}")
+            self.mark_sensors_unavailable()
 
     def mark_sensors_unavailable(self):
+        _LOGGER.debug("mark_sensors_unavailable called")
         for callback in self.callback_thermals:
             callback(None)
         for callback in self.callback_status:
